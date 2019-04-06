@@ -1,5 +1,7 @@
 #lang racket
 
+;; http://fabiensanglard.net/doom_fire_psx/index.html
+
 (require 2htdp/image 2htdp/universe)
 (require threading)
 
@@ -51,7 +53,20 @@
 (define color-count (length colors))
 
 (define (compute-line previous-line)
-  (map sub1 previous-line))
+  ;; mapping on multiple lists == zipping in other languages
+  ;; zipping with the list moved to the left & right to get
+  ;; the previous & next items
+  (map (λ (previous-before previous previous-after)
+         (define x (case (random 10)
+                         [(0) previous-before]
+                         [(2) previous-after]
+                         [else previous]))
+         (if (eq? (random 2) 1)
+             (max 0 (sub1 x))
+             x))
+       (list-tail (cons (first previous-line) previous-line) 1) ;; list-tail not ideal for perf
+       previous-line
+       (append (drop previous-line 1) (list (first previous-line))))) ;; append not ideal for perf
 
 (define (compute-frame depth)
   (for/fold ([frame (list (start-line))])
@@ -67,10 +82,10 @@
   (define start-canvas (list))
   (define flames (~>
    (for/fold ([canvas start-canvas])
-             ([i (in-range 0 (min depth color-count))]
+             ([i (in-naturals)]
               [line frame])
      (paint-line line (- canvas-height (- depth i)) canvas))
-   (color-list->bitmap _ canvas-width depth)))
+   (color-list->bitmap _ canvas-width (length frame))))
   (define full-canvas
     (rectangle canvas-width canvas-height "solid" "black"))
   (place-image/align flames 0 (- canvas-height depth) "left" "top" full-canvas))
@@ -83,6 +98,6 @@
   (build-list canvas-width (const (sub1 color-count))))
 
 (big-bang 0
-          (on-tick (λ (st) (if (< st color-count) (add1 st) st)))
+          (on-tick add1) ;; (λ (st) (if (< st color-count) (add1 st) st)))
           (on-draw draw-flames))
 
