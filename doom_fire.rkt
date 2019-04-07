@@ -5,11 +5,10 @@
 (require 2htdp/image 2htdp/universe)
 (require threading)
 
-(define canvas-width 200)
-(define canvas-height 200)
+(define canvas-width 320)
+(define canvas-height 168)
 
 (define colors
-  (reverse
    (list 
     "black"
     (make-color  #x07 #x07 #x07)
@@ -48,11 +47,11 @@
     (make-color  #xCF #xCF #x6F)
     (make-color  #xDF #xDF #x9F)
     (make-color  #xEF #xEF #xC7)
-    "white")))
+    "white"))
 
 (define color-count (length colors))
 
-(define (compute-line previous-line)
+(define (compute-line depth previous-line)
   ;; mapping on multiple lists == zipping in other languages
   ;; zipping with the list moved to the left & right to get
   ;; the previous & next items
@@ -62,16 +61,17 @@
                      [(2) previous-after]
                      [else previous]))
          (if (eq? (random 2) 1)
-             (max 0 (sub1 x))
+             (max 0 (if (< (sub1 x) (- color-count depth 1)) 0 (sub1 x)))
              x))
        (append (list (first previous-line)) (drop-right previous-line 1)) ;; drop-right & append not ideal for perf
        previous-line
        (append (drop previous-line 1) (list (first previous-line))))) ;; append not ideal for perf
 
 (define (compute-frame depth)
-  (for/fold ([frame (list (start-line))])
-            ([i (in-range 1 depth)])
-    (cons (compute-line (first frame)) frame)))
+  (reverse (for/fold ([frame (list (start-line))])
+            ([i (in-range 0 (sub1 canvas-height))])
+    #:break (andmap zero? (first frame))
+    (cons (compute-line depth (first frame)) frame))))
 
 (define (paint-line line y start-canvas)
   (for/fold ([canvas start-canvas]) ([pixel line] [x (in-naturals)])
@@ -88,7 +88,7 @@
                   (color-list->bitmap _ canvas-width (length frame))))
   (define full-canvas
     (rectangle canvas-width canvas-height "solid" "black"))
-  (place-image/align flames 0 (- canvas-height depth) "left" "top" full-canvas))
+  (place-image/align flames 0 (- canvas-height (length frame)) "left" "top" full-canvas))
 
 ;; our state will be the rows to be displayed,
 ;; containing not colors but indexes of colors
