@@ -3,7 +3,7 @@
 ;; http://fabiensanglard.net/doom_fire_psx/index.html
 
 (require 2htdp/image 2htdp/universe)
-(require threading)
+(require threading match-plus)
 
 (define canvas-width 320)
 (define canvas-height 168)
@@ -51,7 +51,7 @@
 
 (define color-count (length colors))
 
-(define (compute-line previous-line orig-line)
+(define (compute-line depth previous-line orig-line)
   ;; mapping on multiple lists == zipping in other languages
   ;; zipping with the list moved to the left & right to get
   ;; the previous & next items
@@ -71,11 +71,12 @@
      ;; the previous frame. allows the frame to have vertical "holes"
      ;; and for a VERY NICE effect when shutting down the fire from
      ;; the bottom.
-     (max 0 (if (eq? x1 0)
-                (case (random 2)
-                  [(0) (quotient orig-color 2)]
-                  [(1) (sub1 orig-color)])
-                x1)))
+     (define x2 (if (eq? x1 0)
+                    (case (random 2)
+                      [(0) (quotient orig-color 2)]
+                      [(1) (sub1 orig-color)])
+                    x1))
+     (max 0 (min depth x2)))
    (append
     (list (first previous-line))
     (drop-right previous-line 1)) ;; drop-right & append not ideal for perf
@@ -85,18 +86,19 @@
     (list (first previous-line)))
    orig-line)) ;; append not ideal for perf
 
-(define (compute-next-frame orig-frame)
+(define/match* (compute-next-frame (st depth orig-frame))
   (define new-start
     (for/fold
      ([frame (list (first orig-frame))])
      ([orig-line orig-frame])
-      (cons (compute-line (first frame) orig-line) frame)))
-  (reverse
-   (if (>= (length new-start) (length orig-frame))
-       new-start
-       (append
-        (reverse (drop orig-frame (length new-start)))
-        new-start))))
+      (cons (compute-line depth (first frame) orig-line) frame)))
+  (define new-frame (reverse
+                     (if (>= (length new-start) (length orig-frame))
+                         new-start
+                         (append
+                          (reverse (drop orig-frame (length new-start)))
+                          new-start))))
+  (st (add1 depth) new-frame))
 
 (define (paint-line line start-canvas)
   (for/fold
@@ -104,7 +106,7 @@
    ([pixel line] [x (in-naturals)])
     (cons (list-ref colors pixel) canvas)))
 
-(define (draw-flames frame)
+(define/match* (draw-flames (st _ frame))
   (define start-canvas (list))
   (define flames
     (~>
@@ -135,11 +137,15 @@
     (sub1 canvas-height)
     (const (line-col 0)))))
 
-(big-bang (start-line)
-          (on-key (λ (st key)
-                    (cons
-                     (line-col 0)
-                     (drop st 1))))
+(struct st (depth frame))
+
+(big-bang (st 0 (start-line))
+          (on-key (λ (state key)
+                    (st
+                     (st-depth state)
+                     (cons
+                      (line-col 0)
+                      (drop (st-frame state) 1)))))
           (on-tick compute-next-frame 0.1)
           (on-draw draw-flames))
 
