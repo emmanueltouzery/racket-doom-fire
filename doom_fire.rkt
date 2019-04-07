@@ -72,10 +72,10 @@
      ;; and for a VERY NICE effect when shutting down the fire from
      ;; the bottom.
      (max 0 (if (eq? x1 0)
-         (case (random 2)
-           [(0) (quotient orig-color 2)]
-           [(1) (sub1 orig-color)])
-         x1)))
+                (case (random 2)
+                  [(0) (quotient orig-color 2)]
+                  [(1) (sub1 orig-color)])
+                x1)))
    (append
     (list (first previous-line))
     (drop-right previous-line 1)) ;; drop-right & append not ideal for perf
@@ -129,9 +129,13 @@
   (build-list canvas-width (const col)))
 
 (define (start-line)
-  (line-col (sub1 color-count)))
+  (append
+   (list (line-col (sub1 color-count)))
+   (build-list
+    (sub1 canvas-height)
+    (const (line-col 0)))))
 
-(big-bang (list (start-line))
+(big-bang (start-line)
           (on-key (λ (st key)
                     (cons
                      (line-col 0)
