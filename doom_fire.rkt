@@ -107,7 +107,7 @@
    ([pixel line] [x (in-naturals)])
     (cons (list-ref colors pixel) canvas)))
 
-(define/match* (draw-flames (st _ frame))
+(define/match* (draw-flames (st depth frame))
   (define start-canvas (list))
   (define flames
     (~>
@@ -119,10 +119,12 @@
      (color-list->bitmap _ canvas-width (length frame))))
   (define full-canvas
     (rectangle canvas-width canvas-height "solid" "black"))
-  (place-image/align
+  (define result (place-image/align
    flames 0
    (- canvas-height (length frame))
    "left" "top" full-canvas))
+  (save-image result (~a depth ".png"))
+  result)
 
 ;; our state will be the rows to be displayed,
 ;; containing not colors but indexes of colors
