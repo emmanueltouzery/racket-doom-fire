@@ -8,6 +8,7 @@
 (define canvas-width 320)
 (define canvas-height 168)
 
+;; should be a vector due to random access
 (define colors
   (list 
    "black"
